@@ -18,7 +18,16 @@ const signUp = async(req, res, next) => {
     next(error)
   }
 }
+const searchUser = async(req, res, next) => {
+  try {
+    const data = await userService.searchUser(req.query.search)
+    res.status(StatusCodes.OK).json(data)
+  } catch (error) {
+    next(error)
+  }
+}
 export const userController = {
   login,
-  signUp
+  signUp,
+  searchUser
 }

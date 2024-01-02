@@ -37,9 +37,6 @@ const findOneById = async(id) => {
 const login = async(data) => {
   try {
     const findUser = await GET_DB().collection(USER_COLLECTION_NAME).findOne({ email: data.email })
-    // if ( findUser ) {
-    //   const checkPass = await
-    // }
     return findUser
   } catch (error) {
     throw new Error(error)
@@ -67,12 +64,24 @@ const checkUserExisting = async(email) => {
     throw new Error(error)
   }
 }
-
+const searchUser = async(keyWord) => {
+  try {
+    const result = await GET_DB().collection(USER_COLLECTION_NAME).find({
+      $or: [
+        { name: { $regex:keyWord, $options: 'i' } }
+      ]
+    }).toArray()
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
 export const usersModel ={
   USER_COLLECTION_NAME,
   USER_COLLECTTION_SCHEMA,
   findOneById,
   login,
   signUp,
-  checkUserExisting
+  checkUserExisting,
+  searchUser
 }
