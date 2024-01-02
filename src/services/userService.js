@@ -34,7 +34,15 @@ const signUp = async(reqBody) => {
     throw error
   }
 }
+const searchUser = async(keyWord) => {
+  try {
+    return await usersModel.searchUser(keyWord)
+  } catch (error) {
+    throw error
+  }
+}
 export const userService = {
   login,
-  signUp
+  signUp,
+  searchUser
 }

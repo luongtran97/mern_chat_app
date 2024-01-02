@@ -11,7 +11,7 @@ const MESSAGE_COLLECTTION_SCHEMA = Joi.object({
   _destroy:Joi.boolean().default(false)
 })
 
-export const chatModel ={
+export const messageModel ={
   MESSAGE_COLLECTION_NAME,
   MESSAGE_COLLECTTION_SCHEMA
 }
