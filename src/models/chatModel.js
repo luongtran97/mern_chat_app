@@ -1,14 +1,8 @@
-//chat name
-//isGroupChat
-//users
-//lastestMessage
-//groupAdim
 import Joi from 'joi'
 import { ObjectId } from 'mongodb'
 import { GET_DB } from '~/config/mongodb'
 import { OBJECT_ID_MESSAGE, OBJECT_ID_RULE } from '~/utils/validator'
 import { usersModel } from './userModel'
-import { messageModel } from './messageModel'
 
 const CHAT_COLLECTION_NAME = 'chat'
 const CHAT_COLLECTTION_SCHEMA = Joi.object({
@@ -16,7 +10,7 @@ const CHAT_COLLECTTION_SCHEMA = Joi.object({
   isGroupChat:Joi.boolean().default(false),
   users:Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_MESSAGE)).default([]),
   lastestMessage:Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_MESSAGE)).default([]),
-  groupAdmin:Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_MESSAGE),
+  groupAdmin:Joi.string().required().pattern(OBJECT_ID_RULE).message(OBJECT_ID_MESSAGE),
   createdAt:Joi.date().timestamp('javascript').default(Date.now()),
   updatedAt:Joi.date().timestamp('javascript').default(Date.now()),
   _destroy:Joi.boolean().default(false)
@@ -25,42 +19,157 @@ const validateBeforeCreate = async(data) => {
   return await CHAT_COLLECTTION_SCHEMA.validateAsync(data, { abortEarly:false })
 }
 const accessChat = async(req) => {
-  // let isChat = await GET_DB().collection(CHAT_COLLECTION_NAME).find({
-  //   isGroupChat:false,
-  //   $and: [
-  //     { users: { $elemMatch:{ $eq:req.user_id } } },
-  //     { users: { $elemMatch:{ $eq:req.user_id } } }
-  //   ]
-  // }).toArray()
+  let isChat = await GET_DB()
+    .collection(CHAT_COLLECTION_NAME)
+    .aggregate([
+      {
+        $match: {
+          isGroupChat: false,
+          users: {
+            $all: [
+              { $elemMatch: { $eq: new ObjectId(req.user._id) } },
+              { $elemMatch: { $eq: new ObjectId(req.body.userId) } }
+            ]
+          }
+        }
+      },
+      {
+        $match: {
+          _destroy: false
+        }
+      },
+      {
+        $lookup: {
+          from: usersModel.USER_COLLECTION_NAME,
+          localField: 'users',
+          foreignField: '_id',
+          as: 'users'
+        }
+      },
+      {
+        $project:{
+          'users.password':0
+        }
+      }
+    ])
+    .toArray()
 
-  const data = {
-    chatName:'sender',
-    users:[req.user._id, new ObjectId(req.body.userId)]
+  //check isChat exits
+  if (isChat.length > 0) {
+    return isChat[0]
+  } else {
+    const data = {
+      chatName:'sender',
+      users:[req.user._id.toString(), req.body.userId]
+    }
+    const validData = await validateBeforeCreate(data)
+    const newChat = {
+      ...validData,
+      users: validData.users?.map(userId => new ObjectId(userId))
+    }
+    try {
+      const createdChat = await GET_DB().collection(CHAT_COLLECTION_NAME).insertOne(newChat)
+      const fullChat = await GET_DB().collection(CHAT_COLLECTION_NAME).aggregate([
+        { $match: {
+          _id:new ObjectId(createdChat.insertedId),
+          _destroy:false
+        } },
+        {
+          $lookup: {
+            from: usersModel.USER_COLLECTION_NAME,
+            localField:'users',
+            foreignField:'_id',
+            as:'users'
+          }
+        },
+        {
+          $project: {
+            'users.password':0
+          }
+        }
+      ]).toArray()
+      return fullChat
+    } catch (error) {
+      throw new Error(error)
+    }
   }
-  const validData = await validateBeforeCreate(data)
+
+}
+const fetchChats = async(req) => {
   try {
-    const createdChat = await GET_DB().collection(CHAT_COLLECTION_NAME).insertOne(validData)
-    const fullChat = await GET_DB().collection(CHAT_COLLECTION_NAME).aggregate([
+    return await GET_DB().collection(CHAT_COLLECTION_NAME).aggregate([
       { $match: {
-        _id:new ObjectId(createdChat.insertedId),
-        _destroy:false
+        users:{
+          $elemMatch :{ $eq: req.user._id }
+        }
       } },
       {
         $lookup: {
           from: usersModel.USER_COLLECTION_NAME,
-          localField:'users._id',
+          localField:'users',
           foreignField:'_id',
           as:'users'
         }
+      },
+      {
+        $project:{
+          'users.password':0
+        }
+      },
+      {
+        $sort:{
+          'updatedAt': -1
+        }
       }
     ]).toArray()
-    return fullChat
   } catch (error) {
     throw new Error(error)
   }
 }
+const createGroupChat = async(req, users) => {
+  console.log('🚀 ~ users:', users)
+  console.log('🚀 ~ req.user:', req.user)
+
+  const groupChat = {
+    chatName: req.body.name,
+    users,
+    isGroupChat:true,
+    groupAdmin: req.user._id.toString()
+  }
+  const validData = await validateBeforeCreate(groupChat)
+  const newGroupChat = { ...validData, groupAdmin: new ObjectId(validData) }
+  console.log('🚀 ~ newGroupChat:', newGroupChat)
+  try {
+    const createGroupChat = await GET_DB().collection(CHAT_COLLECTION_NAME).insertOne(newGroupChat)
+    const fullGroupChat = await GET_DB().collection(CHAT_COLLECTION_NAME).aggregate([
+      { $match: {
+        _id:new ObjectId(createGroupChat.insertedId),
+        _destroy:false
+      } }
+      // {
+      //   $lookup: {
+      //     from: usersModel.USER_COLLECTION_NAME,
+      //     localField:'_id',
+      //     foreignField:'users',
+      //     as:'users'
+      //   }
+      // },
+      // {
+      //   $project:{
+      //     'users.password':0
+      //   }
+      // }
+    ]).toArray()
+    return fullGroupChat
+  } catch (error) {
+    throw new Error(error)
+  }
+
+}
 export const chatModel ={
   CHAT_COLLECTION_NAME,
   CHAT_COLLECTTION_SCHEMA,
-  accessChat
+  accessChat,
+  fetchChats,
+  createGroupChat
 }

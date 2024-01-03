@@ -1,7 +1,7 @@
 import { StatusCodes } from 'http-status-codes'
 import { chatModel } from '~/models/chatModel'
 
-export const accessChat = async(req) => {
+const accessChat = async(req) => {
   try {
     const { userId } = req.body
     if (!userId) {
@@ -12,6 +12,22 @@ export const accessChat = async(req) => {
     throw error
   }
 }
+const fetchChats = async(req) => {
+  try {
+    return await chatModel.fetchChats(req)
+  } catch (error) {
+    throw error
+  }
+}
+const createGroupChat = async(req, users) => {
+  try {
+    return await chatModel.createGroupChat(req, users)
+  } catch (error) {
+    throw error
+  }
+}
 export const chatService = {
-  accessChat
+  accessChat,
+  fetchChats,
+  createGroupChat
 }
