@@ -26,8 +26,32 @@ const createGroupChat = async(req, users) => {
     throw error
   }
 }
+const renameGroup = async(req, res) => {
+  try {
+    return await chatModel.renameGroup(req, res)
+  } catch (error) {
+    throw error
+  }
+}
+const addToGroup = async(req, res) => {
+  try {
+    return await chatModel.addToGroup(req, res)
+  } catch (error) {
+    throw error
+  }
+}
+const removeFromGroup = async(req, res) => {
+  try {
+    return await chatModel.removeFromGroup(req, res)
+  } catch (error) {
+    throw error
+  }
+}
 export const chatService = {
   accessChat,
   fetchChats,
-  createGroupChat
+  createGroupChat,
+  renameGroup,
+  addToGroup,
+  removeFromGroup
 }

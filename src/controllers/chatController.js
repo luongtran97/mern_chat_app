@@ -34,8 +34,35 @@ const createGroupChat = async(req, res, next) => {
     next(error)
   }
 }
+const renameGroup = async(req, res, next) => {
+  try {
+    const data = await chatService.renameGroup(req, res)
+    return res.status(StatusCodes.OK).json(data)
+  } catch (error) {
+    next(error)
+  }
+}
+const addToGroup = async(req, res, next) => {
+  try {
+    const data = await chatService.addToGroup(req, res)
+    return res.status(StatusCodes.OK).json(data)
+  } catch (error) {
+    next(error)
+  }
+}
+const removeFromGroup = async(req, res, next) => {
+  try {
+    const data = await chatService.removeFromGroup(req, res)
+    return res.status(StatusCodes.OK).json(data)
+  } catch (error) {
+    next(error)
+  }
+}
 export const chatController = {
   accessChat,
   fetchChats,
-  createGroupChat
+  createGroupChat,
+  renameGroup,
+  addToGroup,
+  removeFromGroup
 }
