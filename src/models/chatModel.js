@@ -159,7 +159,7 @@ const createGroupChat = async(req, users) => {
         }
       }
     ]).toArray()
-    return fullGroupChat
+    return fullGroupChat[0]
   } catch (error) {
     throw new Error(error)
   }

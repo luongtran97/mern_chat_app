@@ -23,10 +23,11 @@ const createGroupChat = async(req, res, next) => {
     return res.status(StatusCodes.BAD_REQUEST).send({ message:'Plaese fill all the feilds!' })
   }
   let users = JSON.parse(req.body.users)
-  if (users.length > 2 ) {
+  if (users.length < 2 ) {
     return res.status(StatusCodes.BAD_REQUEST).send({ message:'Need more than 2 users are required to create a group chat' })
   }
-  // users.push(req.user)
+  users.push(req.user._id.toString())
+
   try {
     const data = await chatService.createGroupChat(req, users)
     return res.status(StatusCodes.CREATED).json(data)
