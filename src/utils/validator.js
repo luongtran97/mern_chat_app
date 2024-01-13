@@ -6,3 +6,4 @@ export const OBJECT_PASSWORD_MESSAGE = 'Minimum eight and maximum 10 characters,
 
 export const OBJECT_EMAIL_RULE = new RegExp(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
 export const OBJECT_EMAIL_MESSAGE = 'Invalid Email!'
+

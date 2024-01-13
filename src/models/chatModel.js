@@ -5,12 +5,13 @@ import { OBJECT_ID_MESSAGE, OBJECT_ID_RULE } from '~/utils/validator'
 import { usersModel } from './userModel'
 import { StatusCodes } from 'http-status-codes'
 import _ from 'lodash'
+import { messageModel } from './messageModel'
 const CHAT_COLLECTION_NAME = 'chat'
 const CHAT_COLLECTTION_SCHEMA = Joi.object({
   chatName:Joi.string().required().trim().strict(),
   isGroupChat:Joi.boolean().default(false),
   users:Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_MESSAGE)).default([]),
-  lastestMessage:Joi.array().items(Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_MESSAGE)).default([]),
+  lastestMessage:Joi.string().pattern(OBJECT_ID_RULE).message(OBJECT_ID_MESSAGE).default(null),
   groupAdmin:Joi.object().default(null),
   createdAt:Joi.date().timestamp('javascript').default(Date.now()),
   updatedAt:Joi.date().timestamp('javascript').default(Date.now()),
@@ -64,6 +65,9 @@ const accessChat = async(req) => {
       chatName:'sender',
       users:[req.user._id.toString(), req.body.userId]
     }
+    if ( req.user._id.toString() === req.body.userId) {
+      return { messageResult :'you have to add the same user' }
+    }
     const validData = await validateBeforeCreate(data)
     const newChat = {
       ...validData,
@@ -90,7 +94,7 @@ const accessChat = async(req) => {
           }
         }
       ]).toArray()
-      return fullChat
+      return fullChat[0]
     } catch (error) {
       throw new Error(error)
     }
@@ -121,6 +125,30 @@ const fetchChats = async(req) => {
       {
         $sort:{
           'updatedAt': -1
+        }
+      },
+      {
+        $lookup : {
+          from: messageModel.MESSAGE_COLLECTION_NAME,
+          localField:'lastestMessage',
+          foreignField:'_id',
+          as:'lastestMessage'
+        }
+      },
+      {
+        $unwind: '$lastestMessage'
+      },
+      {
+        $lookup : {
+          from: usersModel.USER_COLLECTION_NAME,
+          localField: 'lastestMessage.sender',
+          foreignField:'_id',
+          as:'lastestMessage.sender'
+        }
+      },
+      {
+        $project:{
+          'lastestMessage.sender.password':0
         }
       }
     ]).toArray()
@@ -167,25 +195,29 @@ const createGroupChat = async(req, users) => {
 }
 const renameGroup = async(req, res) => {
   const { chatId, chatName } = req.body
-
-  const updatedChat = await GET_DB().collection(CHAT_COLLECTION_NAME).aggregate([
-    { $match: { _id: new ObjectId(chatId) } },
-    { $set: { chatName } },
-    { $lookup: {
-      from:usersModel.USER_COLLECTION_NAME,
-      localField:'users',
-      foreignField:'_id',
-      as:'users'
-    } },
-    { $project:{
-      'users.password':0
-    } }
-  ]).toArray()
+  await GET_DB().collection(CHAT_COLLECTION_NAME)
+    .findOneAndUpdate(
+      { _id: new ObjectId(chatId) },
+      { $set: { chatName } },
+      { returnDocument: 'after' }
+    )
+  const updatedChat = await GET_DB().collection(CHAT_COLLECTION_NAME)
+    .aggregate([
+      { $match: { _id: new ObjectId(chatId) } },
+      { $lookup: {
+        from: usersModel.USER_COLLECTION_NAME,
+        localField: 'users',
+        foreignField: '_id',
+        as: 'users'
+      }
+      },
+      { $project: { 'users.password': 0 } }
+    ]).toArray()
   if (!updatedChat) {
     res.status(StatusCodes.NOT_FOUND)
   }
   delete updatedChat[0].groupAdmin.password
-  return updatedChat
+  return updatedChat[0]
 
 }
 const addToGroup = async(req, res) => {
@@ -214,7 +246,7 @@ const addToGroup = async(req, res) => {
   if (!updatedChat) {
     res.status(StatusCodes.NOT_FOUND)
   }
-  return updatedChat
+  return updatedChat[0]
 
 }
 const removeFromGroup = async(req, res) => {
@@ -243,7 +275,7 @@ const removeFromGroup = async(req, res) => {
   if (!updatedChat) {
     res.status(StatusCodes.NOT_FOUND)
   }
-  return updatedChat
+  return updatedChat[0]
 }
 export const chatModel ={
   CHAT_COLLECTION_NAME,
