@@ -1,6 +1,8 @@
 import { generateToken } from '~/config/generateToken'
 import { usersModel } from '~/models/userModel'
 import bcrypt from 'bcrypt'
+import ApiError from '~/utils/ApiError'
+import { StatusCodes } from 'http-status-codes'
 const login = async(reqBody) => {
   try {
     const findUser = await usersModel.login(reqBody)
@@ -11,10 +13,10 @@ const login = async(reqBody) => {
         const result = { ...findUser, token:generateToken(findUser._id) }
         return result
       } else {
-        return { loginResult:'Incorrect Password!' }
+        throw new ApiError(StatusCodes.BAD_REQUEST, ('Incorrect Password') )
       }
     } else {
-      return { loginResult:'Incorrect Email!' }
+      throw new ApiError(StatusCodes.BAD_REQUEST, ('Incorrect Email!') )
     }
   } catch (error) {
     throw error

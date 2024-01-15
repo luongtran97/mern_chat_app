@@ -103,11 +103,9 @@ const accessChat = async(req) => {
 }
 const fetchChats = async(req) => {
   try {
-    return await GET_DB().collection(CHAT_COLLECTION_NAME).aggregate([
+    const data = await GET_DB().collection(CHAT_COLLECTION_NAME).aggregate([
       { $match: {
-        users:{
-          $elemMatch :{ $eq: req.user._id }
-        }
+        users:  req.user._id
       } },
       {
         $lookup: {
@@ -123,11 +121,6 @@ const fetchChats = async(req) => {
         }
       },
       {
-        $sort:{
-          'updatedAt': -1
-        }
-      },
-      {
         $lookup : {
           from: messageModel.MESSAGE_COLLECTION_NAME,
           localField:'lastestMessage',
@@ -135,9 +128,9 @@ const fetchChats = async(req) => {
           as:'lastestMessage'
         }
       },
-      {
-        $unwind: '$lastestMessage'
-      },
+      // {
+      //   $unwind: '$lastestMessage'
+      // },
       {
         $lookup : {
           from: usersModel.USER_COLLECTION_NAME,
@@ -152,6 +145,7 @@ const fetchChats = async(req) => {
         }
       }
     ]).toArray()
+    return data
   } catch (error) {
     throw new Error(error)
   }
